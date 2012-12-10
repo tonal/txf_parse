@@ -1,5 +1,9 @@
 *.py[cod]
 
+# Temp and backup files
+*.kate-swp
+*~
+
 # C extensions
 *.so
 
