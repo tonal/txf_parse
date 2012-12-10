@@ -10,27 +10,31 @@ def parseTXF(fname, encoding='cp1251'):
   @param encoding: кодировка
   @return: Объект txf_file_t
   """
+  from string import ascii_uppercase as aUpper, digits
   # Импортируем имена из модуля pyparsing - построитель разборщиков
-  from pyparsing import Word, Suppress, White, Group, OneOrMore, ZeroOrMore
-  from pyparsing import nums, alphas, restOfLine, oneOf
+  from pyparsing import (
+    Word, Suppress, White, LineEnd, Group, OneOrMore, ZeroOrMore)
+  from pyparsing import restOfLine, oneOf
 
   # Описание грамматики TXF файла
 
   # Общие определения
-  number = Word(nums)               # целое число
-  dot_number = Word(nums + u'.-')   # число с точкой
-  skip_endl = Suppress(restOfLine)  # Отбрасываемый конец строки
+  number = Word(digits)             # целое число
+  dot_number = Word(digits + u'.-') # число с точкой
+  skip_endl = Suppress(LineEnd())   # Отбрасываемый конец строки
+  skip_restl = Suppress(restOfLine) + skip_endl  # Отбрасываем до конца строки
   skip_space = Suppress(White())    # Отбрасываемые пробелы/табуляции
 
   # Строки объекта
-  obj_hdr = Group(u'.OBJ' + number + Word(alphas)) + skip_endl  # Заголовок
-  obj_key = Group(u'.KEY' + number) + skip_endl                 # Собственный номер
-  obj_fld = Group(Word(u'.', alphas) + skip_space + restOfLine) # Характеристика
-  coord = Group(dot_number + dot_number) + skip_endl            # Строка координат
+  obj_hdr = Group(u'.OBJ' + number + Word(aUpper)) + skip_restl  # Заголовок
+  obj_key = Group(u'.KEY' + number) + skip_restl                 # Собственный номер
+  obj_fld = (                                                    # Характеристика
+    Group(Word(u'.', aUpper) + skip_space + restOfLine) + skip_endl)
+  coord = Group(dot_number + dot_number) + skip_restl            # Строка координат
 
   # Координаты объекта
   # начинаются со строки с количеством, за которой идут строки с координатами
-  obj_coords = number + skip_endl + OneOrMore(coord)
+  obj_coords = number + skip_restl + OneOrMore(coord)
 
   def parseCoord(s, loc, tocs):
     u'Преобразование списка токенов в список координат'
@@ -100,10 +104,11 @@ def parseTXF(fname, encoding='cp1251'):
   obj_tit.setParseAction(parseObjTit)
 
   # Строки файла
-  header = Group(oneOf(u'.SXF .SIT') + dot_number) + skip_endl  # Заголовок с версией
-  passport = Group(Word(u'P', nums) + skip_space + restOfLine)  # Строка паспорта
-  objs_start = Group(u'.DAT' + number) + skip_endl              # Начало объектов
-  end_file = u'.END' + skip_endl                                # Конец файла
+  header = Group(oneOf(u'.SXF .SIT') + dot_number) + skip_restl # Заголовок с версией
+  passport = (                                                  # Строка паспорта
+    Group(Word(u'P', digits) + skip_space + restOfLine) + skip_endl)
+  objs_start = Group(u'.DAT' + number) + skip_restl             # Начало объектов
+  end_file = u'.END' + skip_restl                               # Конец файла
 
   # Файл состоит из
   # Заголовка, паспортных данных, строки начала объектов, самих объектов
